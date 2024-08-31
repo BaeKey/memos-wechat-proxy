@@ -121,7 +121,7 @@ def memos_post_api(content):
     }
     response = requests.request("POST", url, headers=headers, data=payload)
     r1 = json.loads(response.text)
-    return r1["data"]["id"]
+    return r1["id"]
 
 
 def reply_text(to_user, from_user, content):
@@ -217,7 +217,7 @@ def memos_post_file_api(file_name, file_path):
 
     del_local_file(file_path)
     res_json = json.loads(response.text)
-    return res_json["data"]["id"], res_json["data"]["filename"]
+    return res_json["id"], res_json["filename"]
 
 
 def memos_post_multipart_api(msgType, resource_id, content=""):
@@ -234,7 +234,7 @@ def memos_post_multipart_api(msgType, resource_id, content=""):
         con.get('prod', 'memos_openid')
     response = requests.post(url, json=data)
     r = json.loads(response.text)
-    memos_response_id = r["data"]["id"]
+    memos_response_id = r["id"]
     return memos_response_id
 
 
