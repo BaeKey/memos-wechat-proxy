@@ -111,10 +111,10 @@ def memos_post_api(content):
     url = con.get('prod', 'memos_url') + "/api/v1/memo?openId=" + \
         con.get('prod', 'memos_openid')
     
-    tag_data = memos_create_default_tags(content)
+    global default_tag_data
 
     payload = json.dumps({
-        "content": "%s\n%s" % (content, tag_data)
+        "content": "%s\n%s" % (content, default_tag_data)
     })
     headers = {
         'Content-Type': 'application/json'
@@ -237,38 +237,17 @@ def memos_post_multipart_api(msgType, resource_id, content=""):
     memos_response_id = r["id"]
     return memos_response_id
 
-
-import requests
-
-def memos_create_default_tags(content=None):
-    if content:
-        # 提取 content 中所有以 # 开头的标签
-        tags = [tag.split(' ', 1)[0][1:] for tag in content.split() if tag.startswith('#')]
-        if tags:
-            # 如果 content 中包含标签，则格式化并返回标签
-            default_tag_data = " ".join(f"#{tag}" for tag in tags)
-        else:
-            # 如果 content 中没有标签，从配置文件中获取默认标签
-            memos_default_tags = con.get('prod', 'memos_default_tags').split(';')
-            default_tag_data = ""
-            for tag in memos_default_tags:
-                if tag:
-                    default_tag_data += f" #{tag}"
-                    tags = {"name": tag}
-                    requests.post(con.get('prod', 'memos_url') + '/api/v1/tag?openId=' +
-                                  con.get('prod', 'memos_openid'), json=tags)
-    else:
-        # 如果没有传递 content，直接从配置文件中获取默认标签
-        memos_default_tags = con.get('prod', 'memos_default_tags').split(';')
-        default_tag_data = ""
-        for tag in memos_default_tags:
-            if tag:
-                default_tag_data += f" #{tag}"
-                tags = {"name": tag}
-                requests.post(con.get('prod', 'memos_url') + '/api/v1/tag?openId=' +
-                              con.get('prod', 'memos_openid'), json=tags)
-    
-    return default_tag_data.lstrip()
+def memos_create_default_tags():
+    memos_default_tags = con.get('prod', 'memos_default_tags').split(';')
+    default_tag_data = ""
+    for tag in memos_default_tags:
+        if tag:
+            default_tag_data = default_tag_data + " #%s" % tag
+            tags = {"name": tag}
+            requests.post(con.get('prod', 'memos_url') + '/api/tag?openId=' +
+                          con.get('prod', 'memos_openid'), json=tags)
+    default_tag_data = default_tag_data.lstrip()
+    return default_tag_data
 
 
 def del_local_file(file_path):
