@@ -13,7 +13,7 @@ import os
 import filetype
 from threading import Timer
 
-file = 'config.ini'
+file = '/config/config.ini'
 con = configparser.ConfigParser()
 con.read(file, encoding='utf-8')
 
@@ -38,7 +38,7 @@ def wexin():
         my_nonce = request.args.get('nonce')
         my_echostr = request.args.get('echostr')
 
-        token = con.get('prod', 'wechat_token')  # 微信公众号的token
+        token = con.get('prod', 'wechat_token')
         data = [token, my_timestamp, my_nonce]
         data.sort()
         temp = ''.join(data)
@@ -108,12 +108,13 @@ def memos_post_api(content):
     """
     这个函数是把微信公众号用户的提交信息推送到memos，然后返回提交id。
     """
-    url = con.get('prod', 'memos_url') + "/api/memo?openId=" + \
+    url = con.get('prod', 'memos_url') + "/api/v1/memo?openId=" + \
         con.get('prod', 'memos_openid')
-    global default_tag_data
+    
+    tag_data = memos_create_default_tags(content)
 
     payload = json.dumps({
-        "content": "%s\n%s" % (content, default_tag_data)
+        "content": "%s\n%s" % (content, tag_data)
     })
     headers = {
         'Content-Type': 'application/json'
@@ -199,7 +200,7 @@ def wechat_video(mediaId):
 
 def memos_post_file_api(file_name, file_path):
     url = con.get('prod', 'memos_url') + \
-        "/api/resource/blob?openId=" + con.get('prod', 'memos_openid')
+        "/api/v1/resource/blob?openId=" + con.get('prod', 'memos_openid')
     payload = {}
     file_type = filetype.guess(file_path)
     if file_type is None:
@@ -229,7 +230,7 @@ def memos_post_multipart_api(msgType, resource_id, content=""):
     else:
         data = {"content": default_tag_data,
                 "visibility": "PRIVATE", "resourceIdList": resource_list}
-    url = con.get('prod', 'memos_url') + "/api/memo?openId=" + \
+    url = con.get('prod', 'memos_url') + "/api/v1/memo?openId=" + \
         con.get('prod', 'memos_openid')
     response = requests.post(url, json=data)
     r = json.loads(response.text)
@@ -237,17 +238,26 @@ def memos_post_multipart_api(msgType, resource_id, content=""):
     return memos_response_id
 
 
-def memos_create_default_tags():
-    memos_default_tags = con.get('prod', 'memos_default_tags').split(';')
-    default_tag_data = ""
-    for tag in memos_default_tags:
-        if tag:
-            default_tag_data = default_tag_data + " #%s" % tag
-            tags = {"name": tag}
-            requests.post(con.get('prod', 'memos_url') + '/api/tag?openId=' +
-                          con.get('prod', 'memos_openid'), json=tags)
-    default_tag_data = default_tag_data.lstrip()
-    return default_tag_data
+def memos_create_default_tags(content):
+    # 提取 content 中所有以 # 开头的标签
+    tags = [tag.split(' ', 1)[0][1:] for tag in content.split() if tag.startswith('#')]
+    
+    if tags:
+        # 如果 content 中包含标签，则格式化并返回标签
+        default_tag_data = " ".join(f"#{tag}" for tag in tags)
+    else:
+        # 如果 content 中不包含标签，从配置文件中获取默认标签
+        memos_default_tags = con.get('prod', 'memos_default_tags').split(';')
+        default_tag_data = ""
+        for tag in memos_default_tags:
+            if tag:
+                default_tag_data += f" #{tag}"
+                # 创建标签（可选）
+                tags = {"name": tag}
+                requests.post(con.get('prod', 'memos_url') + '/api/v1/tag?openId=' +
+                              con.get('prod', 'memos_openid'), json=tags)
+    
+    return default_tag_data.lstrip()
 
 
 def del_local_file(file_path):
