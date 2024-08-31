@@ -238,21 +238,32 @@ def memos_post_multipart_api(msgType, resource_id, content=""):
     return memos_response_id
 
 
-def memos_create_default_tags(content):
-    # 提取 content 中所有以 # 开头的标签
-    tags = [tag.split(' ', 1)[0][1:] for tag in content.split() if tag.startswith('#')]
-    
-    if tags:
-        # 如果 content 中包含标签，则格式化并返回标签
-        default_tag_data = " ".join(f"#{tag}" for tag in tags)
+import requests
+
+def memos_create_default_tags(content=None):
+    if content:
+        # 提取 content 中所有以 # 开头的标签
+        tags = [tag.split(' ', 1)[0][1:] for tag in content.split() if tag.startswith('#')]
+        if tags:
+            # 如果 content 中包含标签，则格式化并返回标签
+            default_tag_data = " ".join(f"#{tag}" for tag in tags)
+        else:
+            # 如果 content 中没有标签，从配置文件中获取默认标签
+            memos_default_tags = con.get('prod', 'memos_default_tags').split(';')
+            default_tag_data = ""
+            for tag in memos_default_tags:
+                if tag:
+                    default_tag_data += f" #{tag}"
+                    tags = {"name": tag}
+                    requests.post(con.get('prod', 'memos_url') + '/api/v1/tag?openId=' +
+                                  con.get('prod', 'memos_openid'), json=tags)
     else:
-        # 如果 content 中不包含标签，从配置文件中获取默认标签
+        # 如果没有传递 content，直接从配置文件中获取默认标签
         memos_default_tags = con.get('prod', 'memos_default_tags').split(';')
         default_tag_data = ""
         for tag in memos_default_tags:
             if tag:
                 default_tag_data += f" #{tag}"
-                # 创建标签（可选）
                 tags = {"name": tag}
                 requests.post(con.get('prod', 'memos_url') + '/api/v1/tag?openId=' +
                               con.get('prod', 'memos_openid'), json=tags)
